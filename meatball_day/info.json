@@ -1,10 +1,10 @@
 {
-    "author": "backwardspy",
+    "author": ["backwardspy"],
     "description": "Allows users to set a personal \"Meatball Day\". On this day they are given a special role.",
     "short": "Meatball Day",
     "end_user_data_statement": "This cog stores user & guild ID when a user invokes the meatball-set command. Users may permanently delete their own data at any time.",
     "min_bot_version": "3.5.5",
-    "min_python_version": "3.11.5",
+    "min_python_version": [3, 11, 5],
     "requirements": [
         "pendulum"
     ],

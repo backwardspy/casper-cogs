@@ -1,6 +1,6 @@
 from redbot.core import commands
 
-from meatball_day.meatball_day import MeatballDay
+from meatballday.cog import MeatballDay
 
 
 async def setup(bot: commands.Bot) -> None:

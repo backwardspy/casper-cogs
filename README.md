@@ -7,9 +7,11 @@ will actually use them. feel free to create issues/PRs if i'm wrong!
 
 ## cogs
 
-### [meatball day](casper_cogs/meatball_day.py)
+### [meatball day](meatballday/cog.py)
 
 TODO:
 
 - make sure chosen dates are actually valid for that month
 - allow leaplings to pick between february 28th and march 1st as a backup option
+
+### [wordle react](wordlereact/cog.py)

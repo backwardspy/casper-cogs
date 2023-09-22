@@ -1,0 +1,10 @@
+{
+    "author": ["backwardspy"],
+    "description": "Reacts to wordle results with an appropriate emoji.",
+    "short": "Wordle React",
+    "end_user_data_statement": "This cog does not store any user data.",
+    "min_bot_version": "3.5.5",
+    "min_python_version": [3, 11, 5],
+    "requirements": [],
+    "tags": ["community", "fun", "games"]
+}

@@ -1,0 +1,10 @@
+{
+    "author": ["backwardspy"],
+    "description": "Replaces a random word in each message with a different word, thus building up a new language over time.",
+    "short": "Lemlang",
+    "end_user_data_statement": "No user data is collected or stored.",
+    "min_bot_version": "3.5.5",
+    "min_python_version": [3, 11, 5],
+    "requirements": [],
+    "tags": ["community", "fun"]
+}

@@ -1,3 +1,3 @@
-reddata/
-__pycache__/
+.red-data/
 .vscode/
+__pycache__/

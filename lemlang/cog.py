@@ -36,8 +36,8 @@ class Lemlang(commands.Cog):
 
         possible_replacements: set[str] = set()
         for word in content.split():
-            if word.casefold() in dictionary:
-                content = content.replace(word, dictionary[word.casefold()])
+            if translation := dictionary.get(word.casefold()):
+                content = content.replace(word, translation)
             elif word in self.words:
                 possible_replacements.add(word.casefold())
 
@@ -62,6 +62,41 @@ class Lemlang(commands.Cog):
     async def reset_dictionary(self, interaction: discord.Interaction) -> None:
         await self.config.guild(interaction.guild).dictionary.set({})
         await interaction.response.send_message("Dictionary reset!")
+
+    @app_commands.command(name="lemlang-dictionary")
+    async def dictionary(self, interaction: discord.Interaction, page: int) -> None:
+        page_size = 5
+
+        if page < 1:
+            await interaction.response.send_message(
+                "Page must be greater than 0!",
+                ephemeral=True,
+            )
+            return
+
+        dictionary = await self.config.guild(interaction.guild).dictionary()
+        if not dictionary:
+            await interaction.response.send_message(
+                "The Lemlang dictionary is empty!",
+                ephemeral=True,
+            )
+            return
+
+        items = list(dictionary.items())[page_size * (page - 1) : page_size * page]
+        await interaction.response.send_message(
+            "\n".join(f"{key} → {value}" for key, value in items)
+            + f"\n\n*Page {page}/{len(dictionary) // page_size}*",
+            ephemeral=True,
+        )
+
+    @app_commands.command(name="lemlang-translate")
+    async def translate(self, interaction: discord.Interaction, message: str) -> None:
+        dictionary = await self.config.guild(interaction.guild).dictionary()
+        reverse = {value: key for key, value in dictionary.items()}
+        for word in message.split():
+            if translation := reverse.get(word.casefold()):
+                message = message.replace(word, translation)
+        await interaction.response.send_message(message, ephemeral=True)
 
     @app_commands.command(name="lemlang-channel")
     @app_commands.default_permissions(administrator=True)

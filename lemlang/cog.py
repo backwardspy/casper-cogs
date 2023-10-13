@@ -98,8 +98,8 @@ class Lemlang(commands.Cog):
         dictionary = await self.config.guild(interaction.guild).dictionary()
         reverse = {value: key for key, value in dictionary.items()}
         for word in message.split():
-            pat = re.compile(rf"\b{word}\b")
             if translation := reverse.get(word.casefold()):
+                pat = re.compile(rf"\b{word}\b")
                 message = re.sub(pat, translation, message)
         await interaction.response.send_message(message, ephemeral=True)
 

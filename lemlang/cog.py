@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
+import re
 
 import discord
 from redbot.core import Config, app_commands, commands
@@ -14,7 +15,10 @@ class Lemlang(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=89226147595173940821)
         self.config.register_guild(channel_id=None, dictionary={})
-        self.words = words_path.read_text().splitlines()
+        self.words = [
+            word.strip().replace(" ", "-")
+            for word in words_path.read_text().splitlines()
+        ]
 
     @commands.Cog.listener()
     async def on_message_without_command(self, message: discord.Message) -> None:
@@ -94,8 +98,9 @@ class Lemlang(commands.Cog):
         dictionary = await self.config.guild(interaction.guild).dictionary()
         reverse = {value: key for key, value in dictionary.items()}
         for word in message.split():
+            pat = re.compile(rf"\b{word}\b")
             if translation := reverse.get(word.casefold()):
-                message = message.replace(word, translation)
+                message = re.sub(pat, translation, message)
         await interaction.response.send_message(message, ephemeral=True)
 
     @app_commands.command(name="lemlang-channel")

@@ -42,8 +42,7 @@ class NotInGuildError(Exception):
         super().__init__("Interaction is not in a guild, consider @guild_only")
 
 
-class ValidationError(Exception):
-    ...
+class ValidationError(Exception): ...
 
 
 class NotNumericError(ValidationError):
@@ -89,8 +88,7 @@ class MeatballSetCallback(Protocol):
         day: int,
         *,
         interaction: discord.Interaction,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class MeatballSetModal(discord.ui.Modal):
@@ -140,6 +138,7 @@ class MeatballDay(commands.Cog):
         self.config.register_guild(
             channel=None,
             role=None,
+            custom_members={},
         )
 
         self.config.register_member(
@@ -182,7 +181,7 @@ class MeatballDay(commands.Cog):
         else:
             await interaction.response.send_message(
                 "Your Meatball Day is "
-                f"{MONTH_NAMES[month-1]} {to_ordinal(day)}. :calendar:",
+                f"{MONTH_NAMES[month - 1]} {to_ordinal(day)}. :calendar:",
                 ephemeral=True,
             )
 
@@ -200,7 +199,7 @@ class MeatballDay(commands.Cog):
             await self.config.member(member).day.set(day)
             await interaction.response.send_message(
                 "I have set your Meatball Day to "
-                f"{MONTH_NAMES[month-1]} {to_ordinal(day)}! :calendar:",
+                f"{MONTH_NAMES[month - 1]} {to_ordinal(day)}! :calendar:",
                 ephemeral=True,
             )
 
@@ -219,6 +218,20 @@ class MeatballDay(commands.Cog):
             ephemeral=True,
         )
 
+    def _resolve_display(
+        self,
+        guild: discord.Guild,
+        identifier: str,
+    ) -> str:
+        try:
+            member_id = int(identifier)
+            member = guild.get_member(member_id)
+            if member is not None:
+                return member.mention
+        except ValueError:
+            pass
+        return identifier
+
     @app_commands.command(name="meatball-next")
     @app_commands.checks.cooldown(rate=1, per=3600)
     @app_commands.guild_only()
@@ -228,7 +241,9 @@ class MeatballDay(commands.Cog):
             raise RuntimeError(msg)
 
         all_members = await self.config.all_members(interaction.guild)
-        if not all_members:
+        custom_members = await self.config.guild(interaction.guild).custom_members()
+
+        if not all_members and not custom_members:
             await interaction.response.send_message(
                 "Nobody has set their Meatball Day yet. "
                 "You could be the first! Use `/meatball set` to get started.",
@@ -238,24 +253,28 @@ class MeatballDay(commands.Cog):
 
         years = [pendulum.today().year, pendulum.today().add(years=1).year]
 
-        configs = []
-        for member, config in all_members.items():
-            if member := interaction.guild.get_member(member):
-                configs.append((member, config["month"], config["day"]))
+        configs: list[tuple[str, int, int]] = []
+        for member_id, config in all_members.items():
+            if member := interaction.guild.get_member(member_id):
+                configs.append((member.mention, config["month"], config["day"]))
+
+        for name, config in custom_members.items():
+            display = self._resolve_display(interaction.guild, name)
+            configs.append((display, config["month"], config["day"]))
 
         all_member_dates = sorted(
             (
-                (member, pendulum.date(year=year, month=month, day=day))
-                for year, (member, month, day) in itertools.product(years, configs)
+                (display, pendulum.date(year=year, month=month, day=day))
+                for year, (display, month, day) in itertools.product(years, configs)
             ),
             key=lambda pair: pair[1],
         )
-        member, date = next(
-            (member, date) for member, date in all_member_dates if date.is_future()
+        display, date = next(
+            (display, date) for display, date in all_member_dates if date.is_future()
         )
 
         await interaction.response.send_message(
-            f"Next Meatball Day is for {member.mention} "
+            f"Next Meatball Day is for {display} "
             f"on {date.to_formatted_date_string()}! :eyes:",
         )
 
@@ -304,25 +323,52 @@ class MeatballDay(commands.Cog):
         )
 
     @app_commands.command(name="meatball-set-member")
-    @app_commands.describe(member="The member to set the Meatball Day for")
+    @app_commands.describe(
+        member="The member (mention/ID) or arbitrary name to set the Meatball Day for",
+    )
     @app_commands.default_permissions(administrator=True)
     @app_commands.guild_only()
     async def meatball_set_member(
         self,
         interaction: discord.Interaction,
-        member: discord.Member,
+        member: str,
     ) -> None:
+        if interaction.guild is None:
+            msg = "Interaction guild is None, use @guild_only"
+            raise RuntimeError(msg)
+
+        resolved_member = None
+        try:
+            member_id = int(member)
+            resolved_member = interaction.guild.get_member(member_id)
+        except ValueError:
+            pass
+
+        if resolved_member is None:
+            for m in interaction.guild.members:
+                if member in (m.name, m.display_name):
+                    resolved_member = m
+                    break
+
         async def callback(
             month: int,
             day: int,
             *,
             interaction: discord.Interaction,
         ) -> None:
-            await self.config.member(member).month.set(month)
-            await self.config.member(member).day.set(day)
+            if resolved_member is not None:
+                await self.config.member(resolved_member).month.set(month)
+                await self.config.member(resolved_member).day.set(day)
+                display = resolved_member.mention
+            else:
+                async with self.config.guild(
+                    interaction.guild,
+                ).custom_members() as custom:
+                    custom[member] = {"month": month, "day": day}
+                display = member
             await interaction.response.send_message(
-                f"I have set {member.mention}'s Meatball Day to "
-                f"{MONTH_NAMES[month-1]} {to_ordinal(day)}.",
+                f"I have set {display}'s Meatball Day to "
+                f"{MONTH_NAMES[month - 1]} {to_ordinal(day)}.",
             )
 
         try:
@@ -362,14 +408,18 @@ class MeatballDay(commands.Cog):
 
     async def _update_meatball_roles(self) -> None:
         all_meatball_days = await self.config.all_members()
-        for guild_id, members in all_meatball_days.items():
+        all_guilds = await self.config.all_guilds()
+        guild_ids = set(all_meatball_days.keys()) | set(all_guilds.keys())
+
+        for guild_id in guild_ids:
             guild = self.bot.get_guild(guild_id)
             if guild is None:
-                log.warning(
-                    "Guild %s no longer exists, removing from config.",
-                    guild_id,
-                )
-                await self.config.guild_from_id(guild_id).clear()
+                if guild_id in all_meatball_days:
+                    log.warning(
+                        "Guild %s no longer exists, removing from config.",
+                        guild_id,
+                    )
+                    await self.config.guild_from_id(guild_id).clear()
                 continue
 
             channel_id = await self.config.guild(guild).channel()
@@ -400,12 +450,13 @@ class MeatballDay(commands.Cog):
                 )
                 continue
 
+            members = all_meatball_days.get(guild_id, {})
             for member_id, meatball_day in members.items():
                 member = guild.get_member(member_id)
                 if member is None:
                     log.warning(
                         "Member %s no longer exists in guild %s, removing from config.",
-                        member,
+                        member_id,
                         guild,
                     )
                     await self.config.member_from_ids(guild_id, member_id).clear()
@@ -434,4 +485,18 @@ class MeatballDay(commands.Cog):
                         "Removed Meatball Day role from %s in guild %s",
                         member,
                         guild,
+                    )
+
+            custom_members = await self.config.guild(guild).custom_members()
+            for name, meatball_day in custom_members.items():
+                today = pendulum.today()
+                is_meatball_day = (
+                    today.month == meatball_day["month"]
+                    and today.day == meatball_day["day"]
+                )
+
+                if is_meatball_day:
+                    display = self._resolve_display(guild, name)
+                    await channel.send(
+                        f"It's {display}'s Meatball Day! :partying_face::tada:",
                     )

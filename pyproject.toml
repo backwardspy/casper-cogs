@@ -1,33 +1,28 @@
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "casper-cogs"
 version = "0.1.0"
-description = ""
-authors = ["backwardspy <backwardspy@pigeon.life>"]
-license = "MIT"
+description = "casper's brain"
 readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "pendulum>=3.2.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.8.1,<3.12"
-pendulum = "^2.1.2"
+[dependency-groups]
+dev = [
+  "red-discordbot>=3.5.24",
+]
 
-[tool.poetry.group.dev.dependencies]
-red-discordbot = "^3.5.5"
-
-[tool.ruff]
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101",
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    "S311",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+  "S311",
 ]

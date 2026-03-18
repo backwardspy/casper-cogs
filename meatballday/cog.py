@@ -487,16 +487,19 @@ class MeatballDay(commands.Cog):
                         guild,
                     )
 
-            custom_members = await self.config.guild(guild).custom_members()
-            for name, meatball_day in custom_members.items():
-                today = pendulum.today()
-                is_meatball_day = (
-                    today.month == meatball_day["month"]
-                    and today.day == meatball_day["day"]
-                )
-
-                if is_meatball_day:
-                    display = self._resolve_display(guild, name)
-                    await channel.send(
-                        f"It's {display}'s Meatball Day! :partying_face::tada:",
+            async with self.config.guild(guild).custom_members() as custom_members:
+                for name, meatball_day in custom_members.items():
+                    today = pendulum.today()
+                    is_meatball_day = (
+                        today.month == meatball_day["month"]
+                        and today.day == meatball_day["day"]
                     )
+
+                    if is_meatball_day and not meatball_day.get("announced"):
+                        meatball_day["announced"] = True
+                        display = self._resolve_display(guild, name)
+                        await channel.send(
+                            f"It's {display}'s Meatball Day! :partying_face::tada:",
+                        )
+                    elif not is_meatball_day and meatball_day.get("announced"):
+                        meatball_day["announced"] = False
